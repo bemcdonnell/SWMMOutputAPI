@@ -14,6 +14,7 @@
 
 #define MEMCHECK(x)  (((x) == NULL) ? 411 : 0 )
 
+#define ULL unsigned long long
 
 static const int RECORDSIZE = 4;       // number of bytes per file record
 
@@ -60,6 +61,8 @@ float DLLEXPORT getSystemValue(SMOutputAPI* smoapi, int timeIndex, SMO_systemAtt
 
 void AddIDentry(struct IDentry* head, char* idname, int numChar);
 
+FILE* NewFile;
+
 int DLLEXPORT SMR_open(const char* path, SMOutputAPI** smoapi)
 //
 //  Purpose: Open the output binary file and read epilogue.
@@ -67,7 +70,7 @@ int DLLEXPORT SMR_open(const char* path, SMOutputAPI** smoapi)
 {
 	int magic1, magic2, errCode, version;
 	long offset;
-	
+	NewFile = fopen("Test.txt","wt");
 	int err;
 	
 	*smoapi = malloc(sizeof(SMOutputAPI));
@@ -1111,15 +1114,16 @@ float DLLEXPORT getNodeValue(SMOutputAPI* smoapi, int timeIndex, int nodeIndex,
 float DLLEXPORT getLinkValue(SMOutputAPI* smoapi, int timeIndex, int linkIndex,
 	SMO_linkAttribute attr)
 {
-	long offset;
+	unsigned long long offset;
 	float value;
-
+	
 	// --- compute offset into output file
-	offset = (long)smoapi->ResultsPos + (long)timeIndex*(long)smoapi->BytesPerPeriod + (long)2 * (long)RECORDSIZE;
+	offset = (unsigned)(long)(long)smoapi->ResultsPos + (unsigned)(long)(long)timeIndex*(unsigned)(long)(long)smoapi->BytesPerPeriod + 2LL * (unsigned)(long)(long)RECORDSIZE;
 	// offset for link
-	offset += (long)RECORDSIZE*((long)smoapi->Nsubcatch*(long)smoapi->SubcatchVars + (long)smoapi->Nnodes*(long)smoapi->NodeVars +
-		(long)linkIndex*(long)smoapi->LinkVars + (long)attr);
-
+	offset += (unsigned)(long)(long)RECORDSIZE*((unsigned)(long)(long)smoapi->Nsubcatch*(unsigned)(long)(long)smoapi->SubcatchVars + (unsigned)(long)(long)smoapi->Nnodes*(unsigned)(long)(long)smoapi->NodeVars +
+		(unsigned)(long)(long)linkIndex*(unsigned)(long)(long)smoapi->LinkVars + (unsigned)(long)(long)attr);
+		
+	fprintf(NewFile,"%llu\n",offset);
 	// --- re-position the file and read the result
 	fseeko(smoapi->file, offset, SEEK_SET);
 	fread(&value, RECORDSIZE, 1, smoapi->file);
