@@ -164,7 +164,7 @@ DLLEXPORT int SMO_getSubcatchSeries(SMOutputAPI* smoapi, int subcatchIndex,
 DLLEXPORT int SMO_getNodeSeries(SMOutputAPI* smoapi, int nodeIndex, SMO_nodeAttribute attr,
 	int timeIndex, int length, float* outValueSeries);
 DLLEXPORT int SMO_getLinkSeries(SMOutputAPI* smoapi, int linkIndex, SMO_linkAttribute attr,
-	int timeIndex, int length, float* outValueSeries);
+	long timeIndex, long length, float* outValueSeries);
 DLLEXPORT int SMO_getSystemSeries(SMOutputAPI* smoapi, SMO_systemAttribute attr,
 	int timeIndex, int length, float *outValueSeries);
 
