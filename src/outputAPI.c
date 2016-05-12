@@ -14,7 +14,7 @@
 
 #define MEMCHECK(x)  (((x) == NULL) ? 411 : 0 )
 
-#define ULLCAST unsigned long long // search and replace
+#define ULLCAST long long // search and replace
 
 static const int RECORDSIZE = 4;       // number of bytes per file record
 
@@ -43,10 +43,10 @@ struct SMOutputAPI {
 	double StartDate;                  // start date of simulation
 	int    ReportStep;                 // reporting time step (seconds)
 
-	unsigned long long IDPos;					       // file position where object ID names start
-	unsigned long long ObjPropPos;					   // file position where object properties start
-	unsigned long long ResultsPos;                    // file position where results start
-	unsigned long long BytesPerPeriod;                // bytes used for results in each period
+	long long IDPos;					       // file position where object ID names start
+	long long ObjPropPos;					   // file position where object properties start
+	long long ResultsPos;                    // file position where results start
+	 long long BytesPerPeriod;                // bytes used for results in each period
 };
 
 //-----------------------------------------------------------------------------
@@ -61,19 +61,16 @@ float DLLEXPORT getSystemValue(SMOutputAPI* smoapi, long timeIndex, SMO_systemAt
 
 void AddIDentry(struct IDentry* head, char* idname, int numChar);
 
-//FILE* NewFile;
-
 int DLLEXPORT SMR_open(const char* path, SMOutputAPI** smoapi)
 //
 //  Purpose: Open the output binary file and read epilogue.
 //
 {
 	int magic1, magic2, errCode, version;
-	unsigned long long offset;
+	long long offset;
 	
 	int err;
 	
-	//NewFile = fopen("Test.txt","wt");
 	*smoapi = malloc(sizeof(SMOutputAPI));
 	
 	strncpy((*smoapi)->name, path, MAXFNAME);
@@ -128,9 +125,9 @@ int DLLEXPORT SMR_open(const char* path, SMOutputAPI** smoapi)
 	fread(&((*smoapi)->Npolluts), RECORDSIZE, 1, (*smoapi)->file);
 
 	// Skip over saved subcatch/node/link input values
-		offset = (ULLCAST)((ULLCAST)(*smoapi)->Nsubcatch + 2uLL) * (ULLCAST)RECORDSIZE  // Subcatchment area
-		+ (ULLCAST)(3uLL * (ULLCAST)(*smoapi)->Nnodes + 4uLL) * (ULLCAST)RECORDSIZE  // Node type, invert & max depth
-		+ (ULLCAST)(5uLL * (ULLCAST)(*smoapi)->Nlinks + 6uLL) * (ULLCAST)RECORDSIZE; // Link type, z1, z2, max depth & length
+		offset = (ULLCAST)((ULLCAST)(*smoapi)->Nsubcatch + 2LL) * (ULLCAST)RECORDSIZE  // Subcatchment area
+		+ (ULLCAST)(3LL * (ULLCAST)(*smoapi)->Nnodes + 4LL) * (ULLCAST)RECORDSIZE  // Node type, invert & max depth
+		+ (ULLCAST)(5LL * (ULLCAST)(*smoapi)->Nlinks + 6LL) * (ULLCAST)RECORDSIZE; // Link type, z1, z2, max depth & length
 	offset = (ULLCAST)(*smoapi)->ObjPropPos + (ULLCAST)offset;
 	fseeko((*smoapi)->file, offset, SEEK_SET);
 
@@ -144,13 +141,13 @@ int DLLEXPORT SMR_open(const char* path, SMOutputAPI** smoapi)
 	fread(&((*smoapi)->SysVars), RECORDSIZE, 1, (*smoapi)->file);     // # System variables
 
 	// --- read data just before start of output results
-	offset = (ULLCAST)(*smoapi)->ResultsPos - 3uLL * (ULLCAST)RECORDSIZE;
+	offset = (ULLCAST)(*smoapi)->ResultsPos - 3LL * (ULLCAST)RECORDSIZE;
 	fseeko((*smoapi)->file, offset, SEEK_SET);
 	fread(&((*smoapi)->StartDate), sizeof(double), 1, (*smoapi)->file);
 	fread(&((*smoapi)->ReportStep), RECORDSIZE, 1, (*smoapi)->file);
 
 	// --- compute number of bytes of results values used per time period
-	(*smoapi)->BytesPerPeriod = 2uLL * (ULLCAST)RECORDSIZE +      // date value (a double)
+	(*smoapi)->BytesPerPeriod = 2LL * (ULLCAST)RECORDSIZE +      // date value (a double)
 		((ULLCAST)(*smoapi)->Nsubcatch*(ULLCAST)(*smoapi)->SubcatchVars +
 		(ULLCAST)(*smoapi)->Nnodes*(ULLCAST)(*smoapi)->NodeVars +
 		(ULLCAST)(*smoapi)->Nlinks*(ULLCAST)(*smoapi)->LinkVars +
@@ -878,7 +875,7 @@ int DLLEXPORT SMO_getSubcatchResult(SMOutputAPI* smoapi, long timeIndex, int sub
 // Purpose: For a subcatchment at given time, get all attributes.
 // 
 {
-	unsigned long long offset;
+	long long offset;
 
 	if (smoapi->isOpened) 
 	{
@@ -906,7 +903,7 @@ int DLLEXPORT SMO_getNodeResult(SMOutputAPI* smoapi, long timeIndex, int nodeInd
 //	Purpose: For a node at given time, get all attributes.
 //
 {
-	unsigned long long offset;
+	long long offset;
 
 	if (smoapi->isOpened) 
 	{
@@ -934,7 +931,7 @@ int DLLEXPORT SMO_getLinkResult(SMOutputAPI* smoapi, long timeIndex, int linkInd
 //	Purpose: For a link at given time, get all attributes.
 //
 {
-	unsigned long long offset;
+	long long offset;
 
 	if (smoapi->isOpened) 
 	{
@@ -961,7 +958,7 @@ int DLLEXPORT SMO_getSystemResult(SMOutputAPI* smoapi, long timeIndex, float* ou
 //	Purpose: For the system at given time, get all attributes.
 //
 {
-	unsigned long long offset;
+	long long offset;
 
 	if (smoapi->isOpened) 
 	{
@@ -1061,7 +1058,7 @@ int DLLEXPORT SMO_errMessage(int errcode, char* errmsg, int n)
 // Local functions:
 double DLLEXPORT getTimeValue(SMOutputAPI* smoapi, long timeIndex)
 {
-	unsigned long long offset;
+	long long offset;
 	double value;
 
 	// --- compute offset into output file
@@ -1078,11 +1075,11 @@ double DLLEXPORT getTimeValue(SMOutputAPI* smoapi, long timeIndex)
 float DLLEXPORT getSubcatchValue(SMOutputAPI* smoapi, long timeIndex, int subcatchIndex,
 	SMO_subcatchAttribute attr)
 {
-	unsigned long long offset;
+	long long offset;
 	float value;
 
 	// --- compute offset into output file
-	offset = (ULLCAST)smoapi->ResultsPos + (ULLCAST)timeIndex*(ULLCAST)smoapi->BytesPerPeriod + 2uLL * (ULLCAST)RECORDSIZE;
+	offset = (ULLCAST)smoapi->ResultsPos + (ULLCAST)timeIndex*(ULLCAST)smoapi->BytesPerPeriod + 2LL * (ULLCAST)RECORDSIZE;
 	// offset for subcatch
 	offset += (ULLCAST)RECORDSIZE*((ULLCAST)subcatchIndex*(ULLCAST)smoapi->SubcatchVars + (ULLCAST)attr);
 
@@ -1096,11 +1093,11 @@ float DLLEXPORT getSubcatchValue(SMOutputAPI* smoapi, long timeIndex, int subcat
 float DLLEXPORT getNodeValue(SMOutputAPI* smoapi, long timeIndex, int nodeIndex,
 	SMO_nodeAttribute attr)
 {
-	unsigned long long offset;
+	long long offset;
 	float value;
 
 	// --- compute offset into output file
-	offset = (ULLCAST)smoapi->ResultsPos + (ULLCAST)timeIndex*(ULLCAST)smoapi->BytesPerPeriod + 2uLL * (ULLCAST)RECORDSIZE;
+	offset = (ULLCAST)smoapi->ResultsPos + (ULLCAST)timeIndex*(ULLCAST)smoapi->BytesPerPeriod + 2LL * (ULLCAST)RECORDSIZE;
 	// offset for node
 	offset += (ULLCAST)RECORDSIZE*((ULLCAST)smoapi->Nsubcatch*(ULLCAST)smoapi->SubcatchVars + (ULLCAST)nodeIndex*(ULLCAST)smoapi->NodeVars + (ULLCAST)attr);
 
@@ -1115,24 +1112,15 @@ float DLLEXPORT getNodeValue(SMOutputAPI* smoapi, long timeIndex, int nodeIndex,
 float DLLEXPORT getLinkValue(SMOutputAPI* smoapi, long timeIndex, int linkIndex,
 	SMO_linkAttribute attr)
 {
-	unsigned long long offset;
+	long long offset;
 	float value;
 	
 	// --- compute offset into output file
-	offset = (ULLCAST)smoapi->ResultsPos + (ULLCAST)timeIndex*(ULLCAST)smoapi->BytesPerPeriod + 2uLL * (ULLCAST)RECORDSIZE;
+	offset = (ULLCAST)smoapi->ResultsPos + (ULLCAST)timeIndex*(ULLCAST)smoapi->BytesPerPeriod + 2LL * (ULLCAST)RECORDSIZE;
 	// offset for link
 	offset += (ULLCAST)RECORDSIZE*((ULLCAST)smoapi->Nsubcatch*(ULLCAST)smoapi->SubcatchVars + (ULLCAST)smoapi->Nnodes*(ULLCAST)smoapi->NodeVars +
 		(ULLCAST)linkIndex*(ULLCAST)smoapi->LinkVars + (ULLCAST)attr);
 		
-	//fprintf(NewFile,"%llu\t\t%X16\n",offset, offset);
-	// fprintf(NewFile,"%llu\t\t%llu\t\t%llu\t\t%llu\t\t%llu\t\t%llu\t\t%llu\n",
-	// (ULLCAST)smoapi->ResultsPos, 
-	// timeIndex*(ULLCAST)smoapi->BytesPerPeriod,
-	// 2uLL * (ULLCAST)RECORDSIZE,
-	// (ULLCAST)RECORDSIZE*((ULLCAST)smoapi->Nsubcatch*(ULLCAST)smoapi->SubcatchVars),
-	// (ULLCAST)smoapi->Nnodes*(ULLCAST)smoapi->NodeVars,
-	// (ULLCAST)linkIndex*(ULLCAST)smoapi->LinkVars,
-	// (ULLCAST)attr);
 	// --- re-position the file and read the result
 	fseeko(smoapi->file, offset, SEEK_SET);
 	fread(&value, RECORDSIZE, 1, smoapi->file);
@@ -1143,11 +1131,11 @@ float DLLEXPORT getLinkValue(SMOutputAPI* smoapi, long timeIndex, int linkIndex,
 float DLLEXPORT getSystemValue(SMOutputAPI* smoapi, long timeIndex,
 	SMO_systemAttribute attr)
 {
-	unsigned long long offset;
+	long long offset;
 	float value;
 
 	// --- compute offset into output file
-	offset = (ULLCAST)smoapi->ResultsPos + (ULLCAST)timeIndex*(ULLCAST)smoapi->BytesPerPeriod + 2uLL * (ULLCAST)RECORDSIZE;
+	offset = (ULLCAST)smoapi->ResultsPos + (ULLCAST)timeIndex*(ULLCAST)smoapi->BytesPerPeriod + 2LL * (ULLCAST)RECORDSIZE;
 	//  offset for system
 	offset += (ULLCAST)RECORDSIZE*((ULLCAST)smoapi->Nsubcatch*(ULLCAST)smoapi->SubcatchVars + (ULLCAST)smoapi->Nnodes*(ULLCAST)smoapi->NodeVars +
 		(ULLCAST)smoapi->Nlinks*(ULLCAST)smoapi->LinkVars + (ULLCAST)attr);
