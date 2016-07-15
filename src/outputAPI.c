@@ -12,6 +12,8 @@
 #include "outputAPI.h"
 #include "datetime.h"
 
+
+
 #define MEMCHECK(x)  (((x) == NULL) ? 411 : 0 )
 
 #define ULLCAST long long // search and replace
@@ -77,20 +79,20 @@ int DLLEXPORT SMR_open(const char* path, SMOutputAPI** smoapi)
 	(*smoapi)->isOpened = false;
 
 	// --- open the output file
-	if (((*smoapi)->file = fopen(path, "rb")) == NULL)
+	if (((*smoapi)->file = fopen64(path, "rb")) == NULL)
 		return 434;
 	else
 		(*smoapi)->isOpened = true;
 	
 	// --- check that file contains at least 14 records
-	fseeko((*smoapi)->file, 0L, SEEK_END);
-	if (ftello((*smoapi)->file) < 14 * RECORDSIZE) {
+	fseeko64((*smoapi)->file, 0L, SEEK_END);
+	if (ftello64((*smoapi)->file) < 14 * RECORDSIZE) {
 		fclose((*smoapi)->file);
 		return 435;
 	}
 	
 	// --- read parameters from end of file
-	fseeko((*smoapi)->file, -6 * RECORDSIZE, SEEK_END);
+	fseeko64((*smoapi)->file, -6 * RECORDSIZE, SEEK_END);
 	fread(&((*smoapi)->IDPos), RECORDSIZE, 1, (*smoapi)->file);
 	fread(&((*smoapi)->ObjPropPos), RECORDSIZE, 1, (*smoapi)->file);
 	fread(&((*smoapi)->ResultsPos), RECORDSIZE, 1, (*smoapi)->file);
@@ -99,7 +101,7 @@ int DLLEXPORT SMR_open(const char* path, SMOutputAPI** smoapi)
 	fread(&magic2, RECORDSIZE, 1, (*smoapi)->file);
 
 	// --- read magic number from beginning of file
-	fseeko((*smoapi)->file, 0L, SEEK_SET);
+	fseeko64((*smoapi)->file, 0L, SEEK_SET);
 	fread(&magic1, RECORDSIZE, 1, (*smoapi)->file);
 
 	// --- perform error checks
@@ -129,20 +131,20 @@ int DLLEXPORT SMR_open(const char* path, SMOutputAPI** smoapi)
 		+ (ULLCAST)((ULLCAST)3 * (ULLCAST)(*smoapi)->Nnodes + (ULLCAST)4) * (ULLCAST)RECORDSIZE  // Node type, invert & max depth
 		+ (ULLCAST)((ULLCAST)5 * (ULLCAST)(*smoapi)->Nlinks + (ULLCAST)6) * (ULLCAST)RECORDSIZE; // Link type, z1, z2, max depth & length
 	offset = (ULLCAST)(*smoapi)->ObjPropPos + (ULLCAST)offset;
-	fseeko((*smoapi)->file, offset, SEEK_SET);
+	fseeko64((*smoapi)->file, offset, SEEK_SET);
 
 	// Read number & codes of computed variables
 	fread(&((*smoapi)->SubcatchVars), RECORDSIZE, 1, (*smoapi)->file); // # Subcatch variables
-	fseeko((*smoapi)->file, (*smoapi)->SubcatchVars*RECORDSIZE, SEEK_CUR);
+	fseeko64((*smoapi)->file, (*smoapi)->SubcatchVars*RECORDSIZE, SEEK_CUR);
 	fread(&((*smoapi)->NodeVars), RECORDSIZE, 1, (*smoapi)->file);     // # Node variables
-	fseeko((*smoapi)->file, (*smoapi)->NodeVars*RECORDSIZE, SEEK_CUR);
+	fseeko64((*smoapi)->file, (*smoapi)->NodeVars*RECORDSIZE, SEEK_CUR);
 	fread(&((*smoapi)->LinkVars), RECORDSIZE, 1, (*smoapi)->file);     // # Link variables
-	fseeko((*smoapi)->file, (*smoapi)->LinkVars*RECORDSIZE, SEEK_CUR);
+	fseeko64((*smoapi)->file, (*smoapi)->LinkVars*RECORDSIZE, SEEK_CUR);
 	fread(&((*smoapi)->SysVars), RECORDSIZE, 1, (*smoapi)->file);     // # System variables
 
 	// --- read data just before start of output results
 	offset = (ULLCAST)(*smoapi)->ResultsPos - 3LL * (ULLCAST)RECORDSIZE;
-	fseeko((*smoapi)->file, offset, SEEK_SET);
+	fseeko64((*smoapi)->file, offset, SEEK_SET);
 	fread(&((*smoapi)->StartDate), sizeof(double), 1, (*smoapi)->file);
 	fread(&((*smoapi)->ReportStep), RECORDSIZE, 1, (*smoapi)->file);
 
@@ -275,7 +277,6 @@ struct DLLEXPORT IDentry* SMO_getSubcatchIDs(SMOutputAPI* smoapi, int *errcode)
 {
 	int arraySize = (smoapi->Nsubcatch); 
 	int* numChar = (int*)calloc(arraySize, RECORDSIZE);
-	int stringSize = 0;
 	int i;
 
 	char *idname;
@@ -294,7 +295,7 @@ struct DLLEXPORT IDentry* SMO_getSubcatchIDs(SMOutputAPI* smoapi, int *errcode)
 		head = (idEntry*)malloc(sizeof(idEntry));
 
 		rewind(smoapi->file);
-		fseeko(smoapi->file, smoapi->IDPos, SEEK_SET);
+		fseeko64(smoapi->file, smoapi->IDPos, SEEK_SET);
 
 		fread(&numChar[0], RECORDSIZE, 1, smoapi->file);
 		idname = calloc(numChar[0] + 1, sizeof(char));
@@ -334,7 +335,6 @@ struct DLLEXPORT IDentry* SMO_getNodeIDs(SMOutputAPI* smoapi, int* errcode)
 {
 	int arraySize = (smoapi->Nnodes);
 	int* numChar = (int*)calloc(arraySize, RECORDSIZE);
-	int stringSize = 0;
 	int i;
 
 	char *idname;
@@ -357,13 +357,13 @@ struct DLLEXPORT IDentry* SMO_getNodeIDs(SMOutputAPI* smoapi, int* errcode)
 	{
 		head = (idEntry*)malloc(sizeof(idEntry));
 		rewind(smoapi->file);
-		fseeko(smoapi->file, smoapi->IDPos, SEEK_SET);
+		fseeko64(smoapi->file, smoapi->IDPos, SEEK_SET);
 
 		// fast forward through subcatchment IDs
 		for (i = 0; i < fwdSize; i++)
 		{
 			fread(&fwdNumChar[i], RECORDSIZE, 1, smoapi->file);
-			fseeko(smoapi->file, fwdNumChar[i], SEEK_CUR);
+			fseeko64(smoapi->file, fwdNumChar[i], SEEK_CUR);
 		}
 
 		fread(&numChar[0], RECORDSIZE, 1, smoapi->file);
@@ -405,7 +405,6 @@ struct IDentry* SMO_getLinkIDs(SMOutputAPI* smoapi, int* errcode)
 {
 	int arraySize = (smoapi->Nlinks);
 	int* numChar = (int*)calloc(arraySize, RECORDSIZE);
-	int stringSize = 0;
 	int i;
 
 	char *idname;
@@ -428,13 +427,13 @@ struct IDentry* SMO_getLinkIDs(SMOutputAPI* smoapi, int* errcode)
 	{
 		head = (idEntry*)malloc(sizeof(idEntry));
 		rewind(smoapi->file);
-		fseeko(smoapi->file, smoapi->IDPos, SEEK_SET);
+		fseeko64(smoapi->file, smoapi->IDPos, SEEK_SET);
 
 		// fast forward through subcatchment and node IDs
 		for (i = 0; i < fwdSize; i++)
 		{
 			fread(&fwdNumChar[i], RECORDSIZE, 1, smoapi->file);
-			fseeko(smoapi->file, fwdNumChar[i], SEEK_CUR);
+			fseeko64(smoapi->file, fwdNumChar[i], SEEK_CUR);
 		}
 
 		fread(&numChar[0], RECORDSIZE, 1, smoapi->file);
@@ -477,7 +476,6 @@ struct IDentry* SMO_getPollutIDs(SMOutputAPI* smoapi, int* errcode)
 {
 	int arraySize = (smoapi->Npolluts);
 	int* numChar = (int*)calloc(arraySize, RECORDSIZE);
-	int stringSize = 0;
 	int i;
 
 	char *idname;
@@ -501,13 +499,13 @@ struct IDentry* SMO_getPollutIDs(SMOutputAPI* smoapi, int* errcode)
 		head = (idEntry*)malloc(sizeof(idEntry));
 
 		rewind(smoapi->file);
-		fseeko(smoapi->file, smoapi->IDPos, SEEK_SET);
+		fseeko64(smoapi->file, smoapi->IDPos, SEEK_SET);
 
 		// fast forward through subcatchment, node, and link IDs
 		for (i = 0; i < fwdSize; i++)
 		{
 			fread(&fwdNumChar[i], RECORDSIZE, 1, smoapi->file);
-			fseeko(smoapi->file, fwdNumChar[i], SEEK_CUR);
+			fseeko64(smoapi->file, fwdNumChar[i], SEEK_CUR);
 		}
 
 		fread(&numChar[0], RECORDSIZE, 1, smoapi->file);
@@ -887,7 +885,7 @@ int DLLEXPORT SMO_getSubcatchResult(SMOutputAPI* smoapi, long timeIndex, int sub
 		// add offset for subcatchment
 		offset += ((ULLCAST)subcatchIndex*(ULLCAST)smoapi->SubcatchVars)*(ULLCAST)RECORDSIZE;
 
-		fseeko(smoapi->file, offset, SEEK_SET);
+		fseeko64(smoapi->file, offset, SEEK_SET);
 		fread(outValueArray, RECORDSIZE, smoapi->SubcatchVars, smoapi->file);
 
 		return 0;
@@ -915,7 +913,7 @@ int DLLEXPORT SMO_getNodeResult(SMOutputAPI* smoapi, long timeIndex, int nodeInd
 		// add offset for subcatchment and node
 		offset += ((ULLCAST)smoapi->Nsubcatch*(ULLCAST)smoapi->SubcatchVars + (ULLCAST)nodeIndex*(ULLCAST)smoapi->NodeVars)*(ULLCAST)RECORDSIZE;
 
-		fseeko(smoapi->file, offset, SEEK_SET);
+		fseeko64(smoapi->file, offset, SEEK_SET);
 		fread(outValueArray, RECORDSIZE, smoapi->NodeVars, smoapi->file);
 
 		return 0;
@@ -944,7 +942,7 @@ int DLLEXPORT SMO_getLinkResult(SMOutputAPI* smoapi, long timeIndex, int linkInd
 		offset += ((ULLCAST)smoapi->Nsubcatch*(ULLCAST)smoapi->SubcatchVars
 			+ (ULLCAST)smoapi->Nnodes*(ULLCAST)smoapi->NodeVars + (ULLCAST)linkIndex*(ULLCAST)smoapi->LinkVars)*(ULLCAST)RECORDSIZE;
 
-		fseeko(smoapi->file, offset, SEEK_SET);
+		fseeko64(smoapi->file, offset, SEEK_SET);
 		fread(outValueArray, RECORDSIZE, smoapi->LinkVars, smoapi->file);
 
 		return 0;
@@ -971,7 +969,7 @@ int DLLEXPORT SMO_getSystemResult(SMOutputAPI* smoapi, long timeIndex, float* ou
 		offset += ((ULLCAST)smoapi->Nsubcatch*(ULLCAST)smoapi->SubcatchVars + (ULLCAST)smoapi->Nnodes*(ULLCAST)smoapi->NodeVars
 			+ (ULLCAST)smoapi->Nlinks*(ULLCAST)smoapi->LinkVars)*(ULLCAST)RECORDSIZE;
 
-		fseeko(smoapi->file, offset, SEEK_SET);
+		fseeko64(smoapi->file, offset, SEEK_SET);
 		fread(outValueArray, RECORDSIZE, smoapi->SysVars, smoapi->file);
 
 		return 0;
@@ -1065,7 +1063,7 @@ double DLLEXPORT getTimeValue(SMOutputAPI* smoapi, long timeIndex)
 	offset = (ULLCAST)smoapi->ResultsPos + (ULLCAST)timeIndex*(ULLCAST)smoapi->BytesPerPeriod;
 
 	// --- re-position the file and read the result
-	fseeko(smoapi->file, offset, SEEK_SET);
+	fseeko64(smoapi->file, offset, SEEK_SET);
 	fread(&value, RECORDSIZE * 2, 1, smoapi->file);
 
 	return value;
@@ -1084,7 +1082,7 @@ float DLLEXPORT getSubcatchValue(SMOutputAPI* smoapi, long timeIndex, int subcat
 	offset += (ULLCAST)RECORDSIZE*((ULLCAST)subcatchIndex*(ULLCAST)smoapi->SubcatchVars + (ULLCAST)attr);
 
 	// --- re-position the file and read the result
-	fseeko(smoapi->file, offset, SEEK_SET);
+	fseeko64(smoapi->file, offset, SEEK_SET);
 	fread(&value, RECORDSIZE, 1, smoapi->file);
 
 	return value;
@@ -1102,7 +1100,7 @@ float DLLEXPORT getNodeValue(SMOutputAPI* smoapi, long timeIndex, int nodeIndex,
 	offset += (ULLCAST)RECORDSIZE*((ULLCAST)smoapi->Nsubcatch*(ULLCAST)smoapi->SubcatchVars + (ULLCAST)nodeIndex*(ULLCAST)smoapi->NodeVars + (ULLCAST)attr);
 
 	// --- re-position the file and read the result
-	fseeko(smoapi->file, offset, SEEK_SET);
+	fseeko64(smoapi->file, offset, SEEK_SET);
 	fread(&value, RECORDSIZE, 1, smoapi->file);
 
 	return value;
@@ -1122,7 +1120,7 @@ float DLLEXPORT getLinkValue(SMOutputAPI* smoapi, long timeIndex, int linkIndex,
 		(ULLCAST)linkIndex*(ULLCAST)smoapi->LinkVars + (ULLCAST)attr);
 		
 	// --- re-position the file and read the result
-	fseeko(smoapi->file, offset, SEEK_SET);
+	fseeko64(smoapi->file, offset, SEEK_SET);
 	fread(&value, RECORDSIZE, 1, smoapi->file);
 
 	return value;
@@ -1141,7 +1139,7 @@ float DLLEXPORT getSystemValue(SMOutputAPI* smoapi, long timeIndex,
 		(ULLCAST)smoapi->Nlinks*(ULLCAST)smoapi->LinkVars + (ULLCAST)attr);
 
 	// --- re-position the file and read the result
-	fseeko(smoapi->file, offset, SEEK_SET);
+	fseeko64(smoapi->file, offset, SEEK_SET);
 	fread(&value, RECORDSIZE, 1, smoapi->file);
 
 	return value;
