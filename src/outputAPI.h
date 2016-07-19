@@ -17,12 +17,15 @@
 #define WINDOWS
 #endif
 
-#ifdef WINDOWS
+/*
 //#define DLLEXPORT __declspec(dllexport) __cdecl
+#ifdef WINDOWS
 #define DLLEXPORT __declspec(dllexport)
 #else
 #define DLLEXPORT
 #endif
+*/
+#define DLLEXPORT __declspec(dllexport) __cdecl
 
 #define MAXFNAME 259
 

@@ -39,8 +39,8 @@ int main(int argc, char* argv[])
 {
 	SMOutputAPI* smoapi = NULL; 
 	//char path[MAXFNAME] = "C:\\Users\\cbarr02\\Desktop\\GitHub\\Storm-Water-Plugin\\outputAPI\\Example3.out"; // no pollutants
-	char path[MAXFNAME] = "C:\\PROJECTCODE\\SWMMOutputAPI\\testing\\OutputTestModel_LargeOutput.out";
-	//char path[MAXFNAME] = "C:\\PROJECTCODE\\SWMMOutputAPI\\testing\\OutputTestModel522_SHORT.out";
+	//char path[MAXFNAME] = "C:\\PROJECTCODE\\SWMMOutputAPI\\testing\\OutputTestModel_LargeOutput.out";
+	char path[MAXFNAME] = "C:\\PROJECTCODE\\SWMMOutputAPI\\testing\\OutputTestModel522_SHORT.out";
 
 	char pathout[MAXFNAME] = "C:\\PROJECTCODE\\SWMMOutputAPI\\testing\\testingexeout.txt";
 	FILE *FOut;

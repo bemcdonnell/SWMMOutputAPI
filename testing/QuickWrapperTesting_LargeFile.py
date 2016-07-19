@@ -6,23 +6,36 @@ from SWMMOutputReader import *
 import matplotlib.pyplot as plt
 
 OutputCollections = SwmmOutputObjects('../data/outputAPI_win.dll')
-OutputCollections.OpenBinFile('C:\\ColumbusModel\\CeptLogicInModel\\RTC_SSCM12_RPM_BLU+_Ho20_Hu20_5.1_050216_FullModel_CEPTTesting_ABC2_45_IJCcont_Kup132k-25k.out')
+OUTFILES = ['C:\\PROJECTCODE\\SWMMOutputAPI\\testing\\OutputTestModel_LargeOutput.out',\
+            'C:\\PROJECTCODE\\SWMMOutputAPI\\testing\\OutputTestModel522_SHORT.out',\
+            'C:\\PROJECTCODE\\SWMMOutputAPI\\testing\\SSCM12_RPM_BAS_wRT-DSS_6Storm_NoCEPT330_01-03.out']
 
-Periods = OutputCollections.get_Times(numPeriods)
+for indMAIN, val in enumerate(OUTFILES):
+    OutputCollections.OpenBinFile(val)
+    
+    Periods = OutputCollections.get_Times(numPeriods, OutInd = indMAIN)
+    print Periods
+    StartTime = OutputCollections.get_StartTime(OutInd = indMAIN)
+    DeltaT = OutputCollections.get_Times(reportStep,OutInd = indMAIN)#seconds
+    ProjectSize = OutputCollections.get_ProjectSize(SM_node,OutInd = indMAIN)
+    SUBC = OutputCollections.get_SubcatchIDs(OutInd = indMAIN)
+    NODE = OutputCollections.get_NodeIDs(OutInd = indMAIN)
+    LINK = OutputCollections.get_LinkIDs(OutInd = indMAIN)
+    print len(NODE)
+    TM =OutputCollections.get_StrStartTime(OutInd = indMAIN) 
+    DTime = datetime.strptime(TM,'%Y-%b-%d %H:%M:%S')
 
-StartTime = OutputCollections.get_StartTime()
-DeltaT = OutputCollections.get_Times(reportStep)#seconds
-ProjectSize = OutputCollections.get_ProjectSize(SM_node)
-SUBC = OutputCollections.get_SubcatchIDs()
-NODE = OutputCollections.get_NodeIDs()
-LINK = OutputCollections.get_LinkIDs()
+#DateSeries = [DTime +timedelta(seconds = ind*DeltaT) for ind in range(Periods)]
 
-TM =OutputCollections.get_StrStartTime() 
-DTime = datetime.strptime(TM,'%Y-%b-%d %H:%M:%S')
+#   OutputCollections.OpenBinFile('C:\\PROJECTCODE\\SWMMOutputAPI\\testing\\SSCM12_RPM_BAS_wRT-DSS_6Storm_NoCEPT330_01-03.out')
 
-DateSeries = [DTime +timedelta(seconds = ind*DeltaT) for ind in range(Periods)]
+##SUBC1 = OutputCollections.get_SubcatchIDs(1)
+##NODE1 = OutputCollections.get_NodeIDs(1)
+##LINK1 = OutputCollections.get_LinkIDs(1)
+
+
 ##print "in"
-DataSeries1 = OutputCollections.get_NodeSeries(NODE['0034S0264'],invert_depth)
+##DataSeries1 = OutputCollections.get_NodeSeries(NODE['0034S0264'],invert_depth)
 ##DataSeries2= OutputCollections.get_LinkSeries(LINK['C2'],flow_rate_link)
 ##DataSeries3 = OutputCollections.get_LinkSeries(LINK['C3'],flow_rate_link)
 ##print "out"
@@ -35,4 +48,8 @@ DataSeries1 = OutputCollections.get_NodeSeries(NODE['0034S0264'],invert_depth)
 ##plt.show()
 
 
-#OutputCollections.CloseBinFile()
+
+
+
+
+##OutputCollections.CloseBinFile()
