@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from SWMMOutputReader import *
 import matplotlib.pyplot as plt
 
-OutputCollections = SwmmOutputObjects('../data/outputAPI_win.dll')
+OutputCollections = SwmmOutputObjects('../data/outputAPI_winx86.dll')
 OutputCollections.OpenBinFile('C:/PROJECTCODE/SWMMOutputAPI/testing/OutputTestModel522_SHORT.out')
 
 Periods = OutputCollections.get_Times(numPeriods)
