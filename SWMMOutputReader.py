@@ -29,7 +29,7 @@ _ReturnIDS._fields_ = [
     ("next", POINTER(_ReturnIDS))]
 
 class SwmmOutputObjects:
-    def __init__(self, dllLoc = './data/outputAPI_winx86.dll'):
+    def __init__(self, dllLoc = 'data/outputAPI_winx86.dll'):
         '''
         Instantiate python Wrapper Object and build Wrapper functions.
         '''

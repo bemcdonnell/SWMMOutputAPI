@@ -6,9 +6,9 @@ from SWMMOutputReader import *
 import matplotlib.pyplot as plt
 
 OutputCollections = SwmmOutputObjects('../data/outputAPI_winx86.dll')
-OUTFILES = ['C:\\PROJECTCODE\\SWMMOutputAPI\\testing\\OutputTestModel_LargeOutput.out',\
-            'C:\\PROJECTCODE\\SWMMOutputAPI\\testing\\OutputTestModel522_SHORT.out',\
-            'C:\\PROJECTCODE\\SWMMOutputAPI\\testing\\SSCM12_RPM_BAS_wRT-DSS_6Storm_NoCEPT330_01-03.out']
+OUTFILES = ['C:\\PROJECTCODE\\SWMMOutputAPI\\testing\\OutputTestModel_LargeOutput.out']#,\
+##            'C:\\PROJECTCODE\\SWMMOutputAPI\\testing\\OutputTestModel522_SHORT.out',\
+##            'C:\\PROJECTCODE\\SWMMOutputAPI\\testing\\SSCM12_RPM_BAS_wRT-DSS_6Storm_NoCEPT330_01-03.out']
 
 for indMAIN, val in enumerate(OUTFILES):
     OutputCollections.OpenBinFile(val)
