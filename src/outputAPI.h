@@ -27,11 +27,11 @@
 */
 #define DLLEXPORT __declspec(dllexport) __cdecl
 
-#define MAXFNAME 259
+#define MAXFILENAME     259   //
+#define MAXELENAME       31   // Max characters in element name
 
 #include <stdbool.h>
 
-#define INT4  int
 
 /*------------------- Error Messages --------------------*/
 #define ERR411 "Input Error 411: no memory allocated for results."
@@ -131,13 +131,9 @@ typedef enum {
 	//p_evap_rate		    // (in/day or mm/day)
 } SMO_systemAttribute;
 
-struct IDentry {
-	char* IDname;
-	struct IDentry* nextID;
-};
-typedef struct IDentry idEntry;
 
-DLLEXPORT int SMR_open(const char* path, SMOutputAPI** smoapi);
+SMOutputAPI* DLLEXPORT SMO_init(void);
+int DLLEXPORT SMO_open(SMOutputAPI* smoapi, const char* path);
 
 
 DLLEXPORT int SMO_getProjectSize(SMOutputAPI* smoapi, SMO_elementCount code, int* count);
@@ -145,22 +141,13 @@ DLLEXPORT int SMO_getUnits(SMOutputAPI* smoapi, SMO_unit code, int* unitFlag);
 DLLEXPORT int SMO_getStartTime(SMOutputAPI* smoapi, double* time);
 DLLEXPORT int SMO_getTimes(SMOutputAPI* smoapi, SMO_time code, int* time);
 
-
-DLLEXPORT struct IDentry* SMO_getSubcatchIDs(SMOutputAPI* smoapi, int* errcode);
-DLLEXPORT struct IDentry* SMO_getNodeIDs(SMOutputAPI* smoapi, int* errcode);
-DLLEXPORT struct IDentry* SMO_getLinkIDs(SMOutputAPI* smoapi, int* errcode);
-DLLEXPORT struct IDentry* SMO_getPollutIDs(SMOutputAPI* smoapi, int* errcode);
-
+int DLLEXPORT SMO_getElementName(SMOutputAPI* smoapi, SMO_elementType type,
+		int elementIndex, char* elementName, int* length);
 
 DLLEXPORT float* SMO_newOutValueSeries(SMOutputAPI* smoapi, long seriesStart,
 	long seriesLength, long* length, int* errcode);
 DLLEXPORT float* SMO_newOutValueArray(SMOutputAPI* smoapi, SMO_apiFunction func,
 	SMO_elementType type, long* length, int* errcode);
-
-
-DLLEXPORT double* SMO_newOutTimeList(SMOutputAPI* smoapi, int* errcode);
-DLLEXPORT int SMO_getTimeList(SMOutputAPI* smoapi, double* array);
-
 
 DLLEXPORT int SMO_getSubcatchSeries(SMOutputAPI* smoapi, int subcatchIndex,
 	SMO_subcatchAttribute attr, long timeIndex, long length, float* outValueSeries);
@@ -171,7 +158,6 @@ DLLEXPORT int SMO_getLinkSeries(SMOutputAPI* smoapi, int linkIndex, SMO_linkAttr
 DLLEXPORT int SMO_getSystemSeries(SMOutputAPI* smoapi, SMO_systemAttribute attr,
 	long timeIndex, long length, float *outValueSeries);
 
-
 DLLEXPORT int SMO_getSubcatchAttribute(SMOutputAPI* smoapi, long timeIndex,
 	SMO_subcatchAttribute attr, float* outValueArray);
 DLLEXPORT int SMO_getNodeAttribute(SMOutputAPI* smoapi, long timeIndex,
@@ -181,7 +167,6 @@ DLLEXPORT int SMO_getLinkAttribute(SMOutputAPI* smoapi, long timeIndex,
 DLLEXPORT int SMO_getSystemAttribute(SMOutputAPI* smoapi, long timeIndex,
 	SMO_systemAttribute attr, float* outValueArray);
 
-
 DLLEXPORT int SMO_getSubcatchResult(SMOutputAPI* smoapi, long timeIndex, int subcatchIndex,
 	float* outValueArray);
 DLLEXPORT int SMO_getNodeResult(SMOutputAPI* smoapi, long timeIndex, int nodeIndex,
@@ -190,11 +175,7 @@ DLLEXPORT int SMO_getLinkResult(SMOutputAPI* smoapi, long timeIndex, int linkInd
 	float* outValueArray);
 DLLEXPORT int SMO_getSystemResult(SMOutputAPI* smoapi, long timeIndex, float* outValueArray);
 
-
 DLLEXPORT void SMO_free(float *array);
-DLLEXPORT void SMO_freeTimeList(double *array);
-DLLEXPORT void SMO_freeIDList(struct IDentry* head);
-
 
 DLLEXPORT int SMO_close(SMOutputAPI* smoapi);
 DLLEXPORT int SMO_errMessage(int errcode, char* errmsg, int n);
