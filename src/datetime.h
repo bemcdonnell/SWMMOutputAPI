@@ -21,12 +21,15 @@
 #define WINDOWS
 #endif
 
+/*
 #ifdef WINDOWS
 //#define DLLEXPORT __declspec(dllexport) __cdecl
 #define DLLEXPORT __declspec(dllexport)
 #else
 #define DLLEXPORT
 #endif
+*/
+#define DLLEXPORT __declspec(dllexport) __cdecl
 
 typedef double DateTime;
 

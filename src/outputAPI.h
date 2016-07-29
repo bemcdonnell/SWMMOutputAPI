@@ -17,12 +17,15 @@
 #define WINDOWS
 #endif
 
-#ifdef WINDOWS
+/*
 //#define DLLEXPORT __declspec(dllexport) __cdecl
+#ifdef WINDOWS
 #define DLLEXPORT __declspec(dllexport)
 #else
 #define DLLEXPORT
 #endif
+*/
+#define DLLEXPORT __declspec(dllexport) __cdecl
 
 #define MAXFNAME 259
 
@@ -149,10 +152,10 @@ DLLEXPORT struct IDentry* SMO_getLinkIDs(SMOutputAPI* smoapi, int* errcode);
 DLLEXPORT struct IDentry* SMO_getPollutIDs(SMOutputAPI* smoapi, int* errcode);
 
 
-DLLEXPORT float* SMO_newOutValueSeries(SMOutputAPI* smoapi, int seriesStart,
-	int seriesLength, int* length, int* errcode);
+DLLEXPORT float* SMO_newOutValueSeries(SMOutputAPI* smoapi, long seriesStart,
+	long seriesLength, long* length, int* errcode);
 DLLEXPORT float* SMO_newOutValueArray(SMOutputAPI* smoapi, SMO_apiFunction func,
-	SMO_elementType type, int* length, int* errcode);
+	SMO_elementType type, long* length, int* errcode);
 
 
 DLLEXPORT double* SMO_newOutTimeList(SMOutputAPI* smoapi, int* errcode);
@@ -160,32 +163,32 @@ DLLEXPORT int SMO_getTimeList(SMOutputAPI* smoapi, double* array);
 
 
 DLLEXPORT int SMO_getSubcatchSeries(SMOutputAPI* smoapi, int subcatchIndex,
-	SMO_subcatchAttribute attr, int timeIndex, int length, float* outValueSeries);
+	SMO_subcatchAttribute attr, long timeIndex, long length, float* outValueSeries);
 DLLEXPORT int SMO_getNodeSeries(SMOutputAPI* smoapi, int nodeIndex, SMO_nodeAttribute attr,
-	int timeIndex, int length, float* outValueSeries);
+	long timeIndex, long length, float* outValueSeries);
 DLLEXPORT int SMO_getLinkSeries(SMOutputAPI* smoapi, int linkIndex, SMO_linkAttribute attr,
-	int timeIndex, int length, float* outValueSeries);
+	long timeIndex, long length, float* outValueSeries);
 DLLEXPORT int SMO_getSystemSeries(SMOutputAPI* smoapi, SMO_systemAttribute attr,
-	int timeIndex, int length, float *outValueSeries);
+	long timeIndex, long length, float *outValueSeries);
 
 
-DLLEXPORT int SMO_getSubcatchAttribute(SMOutputAPI* smoapi, int timeIndex,
+DLLEXPORT int SMO_getSubcatchAttribute(SMOutputAPI* smoapi, long timeIndex,
 	SMO_subcatchAttribute attr, float* outValueArray);
-DLLEXPORT int SMO_getNodeAttribute(SMOutputAPI* smoapi, int timeIndex,
+DLLEXPORT int SMO_getNodeAttribute(SMOutputAPI* smoapi, long timeIndex,
 	SMO_nodeAttribute attr, float* outValueArray);
-DLLEXPORT int SMO_getLinkAttribute(SMOutputAPI* smoapi, int timeIndex,
+DLLEXPORT int SMO_getLinkAttribute(SMOutputAPI* smoapi, long timeIndex,
 	SMO_linkAttribute attr, float* outValueArray);
-DLLEXPORT int SMO_getSystemAttribute(SMOutputAPI* smoapi, int timeIndex,
+DLLEXPORT int SMO_getSystemAttribute(SMOutputAPI* smoapi, long timeIndex,
 	SMO_systemAttribute attr, float* outValueArray);
 
 
-DLLEXPORT int SMO_getSubcatchResult(SMOutputAPI* smoapi, int timeIndex, int subcatchIndex,
+DLLEXPORT int SMO_getSubcatchResult(SMOutputAPI* smoapi, long timeIndex, int subcatchIndex,
 	float* outValueArray);
-DLLEXPORT int SMO_getNodeResult(SMOutputAPI* smoapi, int timeIndex, int nodeIndex,
+DLLEXPORT int SMO_getNodeResult(SMOutputAPI* smoapi, long timeIndex, int nodeIndex,
 	float* outValueArray);
-DLLEXPORT int SMO_getLinkResult(SMOutputAPI* smoapi, int timeIndex, int linkIndex,
+DLLEXPORT int SMO_getLinkResult(SMOutputAPI* smoapi, long timeIndex, int linkIndex,
 	float* outValueArray);
-DLLEXPORT int SMO_getSystemResult(SMOutputAPI* smoapi, int timeIndex, float* outValueArray);
+DLLEXPORT int SMO_getSystemResult(SMOutputAPI* smoapi, long timeIndex, float* outValueArray);
 
 
 DLLEXPORT void SMO_free(float *array);
