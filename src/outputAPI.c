@@ -10,7 +10,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include "outputAPI.h"
-//#include "datetime.h"
+#include "datetime.h"
 
 
 // NOTE: These depend on machine data model and may change when porting
@@ -746,7 +746,7 @@ int validateFile(SMOutputAPI* smoapi)
 	fread(&magic2, RECORDSIZE, 1, smoapi->file);
 
 	// --- read magic number from beginning of the file
-	fseeko(smoapi->file, 0L, SEEK_SET);
+	fseeko64(smoapi->file, 0L, SEEK_SET);
 	fread(&magic1, RECORDSIZE, 1, smoapi->file);
 
 	// Is this a valid SWMM binary output file?
