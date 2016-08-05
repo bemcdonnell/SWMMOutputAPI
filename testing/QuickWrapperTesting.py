@@ -12,9 +12,9 @@ Periods = OutputCollections.get_Times(numPeriods)
 StartTime = OutputCollections.get_StartTime()
 DeltaT = OutputCollections.get_Times(reportStep)#seconds
 OutputCollections.get_ProjectSize(SM_subcatch)
-SUBC = OutputCollections.get_SubcatchIDs()
-NODE = OutputCollections.get_NodeIDs()
-LINK = OutputCollections.get_LinkIDs()
+##SUBC = OutputCollections.get_SubcatchIDs()
+##NODE = OutputCollections.get_NodeIDs()
+##LINK = OutputCollections.get_LinkIDs()
 ##
 ##TM =OutputCollections.get_StrStartTime() 
 ##DTime = datetime.strptime(TM,'%Y-%b-%d %H:%M:%S')
