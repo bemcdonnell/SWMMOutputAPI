@@ -8,12 +8,13 @@ Date: 1/10/2016
 '''
 from ctypes import *
 from _toolkitpyswmm import *
+from datetime import datetime, timedelta
 
 __author__ = 'Bryant E. McDonnell (bemcdonnell@gmail.com)'
 __copyright__ = 'Copyright (c) 2016 Bryant E. McDonnell'
-__license__ = ''
-__vcs_id__ = ''
-__version__ = '1.0'
+__license__ = 'BSD2'
+__version__ = '2.0'
+
 
 class _Opaque(Structure):
     '''
@@ -21,21 +22,13 @@ class _Opaque(Structure):
     '''    
     pass
 
-class _ReturnIDS(Structure):
-    pass
-
-_ReturnIDS._fields_ = [
-    ("ID", c_char_p),
-    ("next", POINTER(_ReturnIDS))]
-
-class SwmmOutputObjects:
+class SWMMBinReader:
     def __init__(self, dllLoc = 'data/outputAPI_winx86.dll'):
         '''
+
         Instantiate python Wrapper Object and build Wrapper functions.
+        
         '''
-        self.smoapiBinName = {}
-        self.smoapiBinInd = {}
-        self.smoapiIndName = {}
 
         try:
             self.swmmdll = CDLL(dllLoc)    
@@ -44,14 +37,23 @@ class SwmmOutputObjects:
      
 
         #### Initializing DLL Function List
+        #Initialize Pointer to smoapi
+        self._initsmoapi = self.swmmdll.SMO_init
+        self._initsmoapi.restype = POINTER(_Opaque)
+        
         #Open File Function Handle
-        self._openBinFile = self.swmmdll.SMR_open
+        self._openBinFile = self.swmmdll.SMO_open
         self._free = self.swmmdll.SMO_free
         self._close = self.swmmdll.SMO_close
-        
+
+        #Project Data
         self._getProjectSize = self.swmmdll.SMO_getProjectSize
         self._getTimes = self.swmmdll.SMO_getTimes
         self._getStartTime = self.swmmdll.SMO_getStartTime
+
+        #Object ID Function Handles
+        self._getIDs = self.swmmdll.SMO_getElementName
+        
         #Object Series Function Handles
         self._getSubcatchSeries = self.swmmdll.SMO_getSubcatchSeries
         self._getNodeSeries = self.swmmdll.SMO_getNodeSeries
@@ -69,17 +71,6 @@ class SwmmOutputObjects:
         self._getNodeResult = self.swmmdll.SMO_getNodeResult
         self._getLinkResult = self.swmmdll.SMO_getLinkResult
         self._getSystemResult = self.swmmdll.SMO_getSystemResult
-
-        #Object ID Return Functions
-        self._getSubcatchIDs = self.swmmdll.SMO_getSubcatchIDs
-        self._getSubcatchIDs.restype = POINTER(_ReturnIDS)
-        self._getNodeIDs = self.swmmdll.SMO_getNodeIDs
-        self._getNodeIDs.restype = POINTER(_ReturnIDS)
-        self._getLinkIDs = self.swmmdll.SMO_getLinkIDs
-        self._getLinkIDs.restype = POINTER(_ReturnIDS)
-
-        #clear ID
-        self._freeIDList = self.swmmdll.SMO_freeIDList
         
         #Array Builder
         self._newOutValueArray = self.swmmdll.SMO_newOutValueArray
@@ -99,155 +90,185 @@ class SwmmOutputObjects:
         
     def OpenBinFile(self, OutLoc):
         '''
-        Opens New Bin file and indexes the smoapi pointer to outfile.
-        If this function is called more than once with difference *.out
-        files, the tool will keep track of each *.out file in dictionaries.
 
-        Calling CloseBinFile will close the indexed outputfile of choice.
+        Opens New Bin file 
 
-        Each retrieve data function, by default, assumes the output file indexed as 0.
-        This is advantageous under the condition that the user opens 1 *.out file. If
-        more than one *.out file is indexed, the final function argument takes is the
-        *.out file the user would like data from. 
+        Example: "C:\\PROJECTCODE\\SWMMOutputAPI\\testing\\OutputTestModel_LargeOutput.out"
+
         '''
-        nm = OutLoc.replace('\\','/')
-        nm = nm.split('/')
-        nm = nm[-1]
-        nm = nm.replace('.out','')
-        nm = nm.replace('.','')
-        
-        if nm not in self.smoapiBinName:
-            smoapi = pointer(_Opaque())
-            ret = self._openBinFile(OutLoc, byref(smoapi))
-            print ret, smoapi
-            if len(self.smoapiBinInd.keys()) > 0: ind = max(self.smoapiBinInd.keys())+1
-            else: ind = 0
-            self.smoapiBinInd[ind] = smoapi
-            self.smoapiBinName[nm] = ind
-            self.smoapiIndName[ind] = nm
-        return 0
+        self.smoapi = self._initsmoapi()
+        ErrNo = self._openBinFile(self.smoapi,OutLoc)
+        if ErrNo != 0:
+            raise Exception("API ErrNo {0}:{1}".format(ErrNo1.value, DLLErrorKeys[ErrNo.value]))
+      
     
-    def CloseBinFile(self, OutInd = 0, OutName = None):
-        if OutName == None:
-            if OutInd in self.smoapiBinInd.keys():
-                ret = self._close(self.smoapiBinInd[OutInd])
-                self.smoapiBinInd.pop(OutInd, None)
-                self.smoapiBinName.pop(self.smoapiIndName[OutInd], None)
-                self.smoapiIndName.pop(OutInd, None)
-        else:
-            if OutName in self.smoapiBinName.keys():
-                ret = self._close(self.smoapiBinName[OutName])
-                self.smoapiBinInd.pop(self.smoapiBinName[OutName], None)
-                self.smoapiBinName.pop(OutName, None)
-                self.smoapiIndName.pop(self.smoapiBinName[OutName], None)            
-        return 0
+    def CloseBinFile(self):
+        '''
 
-    def CloseALL(self):
+        Purpose: Closes Binary File and Cleans up Class
+        
         '''
-        Purpose: Closes all Output Files
-        '''
-        for OutInd in self.smoapiIndName.keys():
-            self.CloseBinFile(OutInd = OutInd)
+        ErrNo = self._close(self.smoapi)
+        
+        if hasattr(self, 'SubcatchmentIDs'): delattr(self,'SubcatchmentIDs')
+        if hasattr(self, 'NodeIDs'): delattr(self,'NodeIDs')
+        if hasattr(self, 'LinkIDs'): delattr(self,'LinkIDs')
+        if hasattr(self, 'PollutantIDs'): delattr(self,'PollutantIDs')
+        
+        if ErrNo != 0:
+            raise Exception("API ErrNo {0}:{1}".format(ErrNo1.value, DLLErrorKeys[ErrNo.value]) )
                  
-    def get_SubcatchIDs(self, OutInd = 0):
+    def _get_SubcatchIDs(self):
         '''
-        Purpose: Returns Element IDs dictionary for Subcatchments
-        '''
-        smoapi = self.smoapiBinInd[OutInd]
-        ErrNo1 = c_int() 
-        id_List = self._getSubcatchIDs(smoapi, byref(ErrNo1))
+
+        Purpose: Generates member Element IDs dictionary for Subcatchments
         
-        IDList = []
-        IDDict = {}
-
-        i = 0
-        while i < self.get_ProjectSize(SM_subcatch, OutInd = OutInd):
-            IDName = id_List.contents.ID
-            IDList.append(IDName)
-            IDDict[IDName]=i
-            id_List = id_List.contents.next
-            i+=1
-
-        self._freeIDList(id_List)
-        return IDDict
-
-    def get_NodeIDs(self, OutInd = 0):
         '''
-        Purpose: Returns Element IDs dictionary for Nodes
+
+        self.SubcatchmentIDs = {}
+        for i in range(self.get_ProjectSize(subcatchCount)):
+            NAME = create_string_buffer(32)
+            LEN = c_int(32)
+            ErrNo1 = self._getIDs(self.smoapi, SM_subcatch, i, byref(NAME), byref(LEN))
+            if ErrNo1 != 0:
+                raise Exception("API ErrNo {0}:{1}".format(ErrNo1.value, DLLErrorKeys[ErrNo1.value]) )
+            self.SubcatchmentIDs[str(NAME.value)] = i
+            
+    def _get_NodeIDs(self):
         '''
-        smoapi = self.smoapiBinInd[OutInd]
-        ErrNo1 = c_int() 
-        id_List = self._getNodeIDs(smoapi, byref(ErrNo1))
+
+        Purpose: Generates member Element IDs dictionary for Nodes
         
-        IDList = []
-        IDDict = {}
-
-        i = 0
-        while i < self.get_ProjectSize(SM_node, OutInd = OutInd):
-            IDName = id_List.contents.ID
-            IDList.append(IDName)
-            IDDict[IDName]=i
-            id_List = id_List.contents.next
-            i+=1
-
-        self._freeIDList(id_List)
-        return IDDict
-
-    def get_LinkIDs(self, OutInd = 0):
         '''
-        Purpose: Returns Element IDs dictionary for Nodes
+        self.NodeIDs = {}
+        for i in range(self.get_ProjectSize(nodeCount)):
+            NAME = create_string_buffer(32)
+            LEN = c_int(32)
+            ErrNo1 = self._getIDs(self.smoapi, SM_node, i, byref(NAME), byref(LEN))
+            if ErrNo1 != 0:
+                raise Exception("API ErrNo {0}:{1}".format(ErrNo1.value, DLLErrorKeys[ErrNo1.value]) )
+            self.NodeIDs[str(NAME.value)] = i
+
+    def _get_LinkIDs(self):
         '''
-        smoapi = self.smoapiBinInd[OutInd]
-        ErrNo1 = c_int() 
-        id_List = self._getLinkIDs(smoapi, byref(ErrNo1))
+
+        Purpose: Generates member Element IDs dictionary for Links
         
-        IDList = []
-        IDDict = {}
-
-        i = 0
-        while i < self.get_ProjectSize(SM_link, OutInd = OutInd):
-            IDName = id_List.contents.ID
-            IDList.append(IDName)
-            IDDict[IDName]=i
-            id_List = id_List.contents.next
-            i+=1
-
-        self._freeIDList(id_List)
-        return IDDict
-
-    def get_Units(self, SMO_elementType, OutInd = 0):
         '''
-        Purpose: Returns pressure and flow units
+        self.LinkIDs = {}
+        for i in range(self.get_ProjectSize(linkCount)):
+            NAME = create_string_buffer(32)
+            LEN = c_int(32)
+            ErrNo1 = self._getIDs(self.smoapi, SM_link, i, byref(NAME), byref(LEN))
+            if ErrNo1 != 0:
+                raise Exception("API ErrNo {0}:{1}".format(ErrNo1.value, DLLErrorKeys[ErrNo1.value]) )
+            self.LinkIDs[str(NAME.value)] = i            
+
+    def _get_PollutantIDs(self):
         '''
-        smoapi = self.smoapiBinInd[OutInd]
+
+        Purpose: Generates member Element IDs dictionary for Pollutants
+        
+        '''
+        self.PollutantIDs = {}
+        for i in range(self.get_ProjectSize(pollutantCount)):
+            NAME = create_string_buffer(32)
+            LEN = c_int(32)
+            ErrNo1 = self._getIDs(self.smoapi, SM_sys, i, byref(NAME), byref(LEN))
+            if ErrNo1 != 0:
+                raise Exception("API ErrNo {0}:{1}".format(ErrNo1.value, DLLErrorKeys[ErrNo1.value]) )
+            self.PollutantIDs[str(NAME.value)] = i  
+
+    def get_IDs(self, SMO_elementType):
+        '''
+
+        Purpose: Returns List Type of Element IDs
+
+        SMO_elementType ---->
+            Element Types:
+                SM_subcatch,
+                SM_node,
+                SM_link,
+                SM_sys # <-- Used for Polluant IDs
+
+        Returns: ordered List of IDs
+        '''
+        if SMO_elementType == SM_subcatch:
+            if not hasattr(self, 'SubcatchmentIDs'):
+                self._get_SubcatchIDs()
+            IDlist = self.SubcatchmentIDs.keys()       
+        elif SMO_elementType == SM_node:
+            if not hasattr(self, 'NodeIDs'):
+                self._get_NodeIDs()
+            IDlist = self.NodeIDs.keys()
+            
+        elif SMO_elementType == SM_link:
+            if not hasattr(self, 'LinkIDs'):
+                self._get_LinkIDs()
+            IDlist = self.LinkIDs.keys()
+        elif SMO_elementType == SM_sys: # Pollutant IDs for now
+            if not hasattr(self, 'PollutantIDs'):
+                self._get_PollutantIDs()
+            IDlist = self.PollutantIDs.keys()
+        else:
+            raise Exception("SMO_elementType: {} Outside Valid Types".format(SMO_elementType))
+            return 0
+        # Do not sort lists
+        return IDlist
+
+    def get_Units(self, SMO_elementType):
+        '''
+
+        Purpose: Returns flow units and Concentration
+
+        SMO_unit --->
+            flow_rate,
+            concentration
+        
+        '''
+        
         x = c_int()
-        ret = self._getProjectSize(smoapi, SMO_elementType, byref(x))
+        ErrNo1 = self._getProjectSize(self.smoapi, SMO_elementType, byref(x))
+        if ErrNo1 != 0:
+            raise Exception("API ErrNo {0}:{1}".format(ErrNo1, DLLErrorKeys[ErrNo]) )          
         return x.value
 
-    def get_Times(self, SMO_timeElementType, OutInd = 0):
+    def get_Times(self, SMO_timeElementType):
         '''
+
         Purpose: Returns report and simulation time related parameters.
+
+        SMO_time --->
+            reportStep,
+            numPeriods
+
         '''
-        smoapi = self.smoapiBinInd[OutInd]
+        
         timeElement = c_int()
-        ret = self._getTimes(smoapi, SMO_timeElementType, byref(timeElement))
+        ErrNo1 = self._getTimes(self.smoapi, SMO_timeElementType, byref(timeElement))
+        if ErrNo1 != 0:
+            raise Exception("API ErrNo {0}:{1}".format(ErrNo1, DLLErrorKeys[ErrNo]) )                  
         return timeElement.value
     
-    def get_StartTime(self, OutInd = 0):
+    def _get_StartTimeSWMM(self):
         '''
-        Prupose: Returns the simulation start datetime as double.
+
+        Purpose: Returns the simulation start datetime as double.
         '''
-        smoapi = self.smoapiBinInd[OutInd]
+        
         StartTime = c_double()
-        ErrNo1 = self._getStartTime(smoapi, byref(StartTime))
+        ErrNo1 = self._getStartTime(self.smoapi, byref(StartTime))
+        if ErrNo1 != 0:
+            raise Exception("API ErrNo {0}:{1}".format(ErrNo1, DLLErrorKeys[ErrNo]) )                  
         return StartTime.value
 
-    def get_StrStartTime(self, OutInd=0):
+    def get_StartTime(self):
         '''
-        Purpose: Uses SWMM5 Convestion Functions to Pull DateTime String.
-                This can ideally be post processed by user.
+
+        Purpose: Uses SWMM5 Conversion Functions to Pull DateTime String
+                and converts to datetime format
         '''
-        _StartTime = self.get_StartTime(OutInd = OutInd)
+        _StartTime = self._get_StartTimeSWMM()
         _date = int(_StartTime)
         _time = _StartTime - _date
 
@@ -260,270 +281,293 @@ class SwmmOutputObjects:
         TimeStr = create_string_buffer(50)
         self.SWMMtimeToStr(c_double(_time), byref(TimeStr))
         TIME = TimeStr.value
-        return DATE+' '+TIME
+        DTime = datetime.strptime(DATE+' '+TIME,'%Y-%b-%d %H:%M:%S')
+        return DTime
 
-    def get_ProjectSize(self, SMO_elementCount, OutInd = 0):
+    def get_TimeSeries(self):
         '''
-        Purpose: Returns number of elements of a specific element type
+
+        Purpose: Gets simulation start time and builds timeseries array based on the reportStep
+
         '''
-        smoapi = self.smoapiBinInd[OutInd]
-        numel = c_int()
-        ret = self._getProjectSize(smoapi, SMO_elementCount, byref(numel))        
+        return [self.get_StartTime() + timedelta(seconds = ind*self.get_Times(reportStep))\
+                for ind in range(self.get_Times(numPeriods))]
         
+    def get_ProjectSize(self, SMO_elementCount):
+        '''
+
+        Purpose: Returns number of elements of a specific element type
+
+        SMO_elementCount --->
+            subcatchCount,
+            nodeCount,
+            linkCount,
+            pollutantCount
+        
+        '''
+        numel = c_int()
+        ErrNo1 = self._getProjectSize(self.smoapi, SMO_elementCount, byref(numel))        
+        if ErrNo1 != 0:
+            raise Exception("API ErrNo {0}:{1}".format(ErrNo1,DLLErrorKeys[ErrNo1]) )        
         return numel.value
 
-    def get_NodeSeries(self, NodeInd, NodeAttr, SeriesStartInd = 0, SeriesLen = -1, OutInd = 0):
+    def get_Series(self, SMO_elementType, SMO_Attribute, IDName = None, TimeStartInd = 0, TimeEndInd = -1):
         '''
+
         Purpose: Get time series results for particular attribute. Specify series
         start and length using seriesStart and seriesLength respectively.
 
-        SeriesLen = -1 Default input: Gets data from Series Start Ind to end
+        SMO_elementType ---->
+            Element Types:
+                SM_subcatch,
+                SM_node,
+                SM_link,
+                SM_sys
+
+        SMO_Attribute ---->
+            Subcatchment Attributes:
+                rainfall_subcatch, snow_depth_subcatch, evap_loss,infil_loss,
+                runoff_rate, gwoutflow_rate, gwtable_elev, soil_moisture,
+                pollutant_conc_subcatch
+
+            Node Attributes:
+                invert_depth, hydraulic_head, stored_ponded_volume, lateral_inflow,
+                total_inflow, flooding_losses, pollutant_conc_node
+
+            Link Attributes:
+                flow_rate_link, flow_depth, flow_velocity, flow_volume,
+                capacity, pollutant_conc_link
+
+            System Attributes:
+                air_temp, rainfall_system, snow_depth_system, evap_infil_loss,
+                runoff_flow, dry_weather_inflow, groundwater_inflow, RDII_inflow,
+                direct_inflow, total_lateral_inflow, flood_losses, outfall_flows,
+                volume_stored, evap_rate
+
+        IDName = Input ID Name (Default is None for to reach SM_sys variables)
+
+        TimeStartInd = 0 Default input to get all the data
+        
+        TimeEndInd = -1 Default input: Gets data from Series Start Ind to end
         
         '''
-        smoapi = self.smoapiBinInd[OutInd]
-        if SeriesLen > self.get_Times(numPeriods, OutInd) :
+        
+        if TimeEndInd > self.get_Times(numPeriods):
             raise Exception("Outside Number of TimeSteps")
-        elif SeriesLen == -1:
-            SeriesLen = self.get_Times(numPeriods, OutInd) + 1 - SeriesLen
-        if NodeInd > self.get_ProjectSize(nodeCount, OutInd) -1:
-            raise Exception("Outside Number of Nodes")            
+        elif TimeEndInd == -1:
+            TimeEndInd = self.get_Times(numPeriods) + 1 - TimeEndInd
+      
             
         sLength = c_int()
         ErrNo1 = c_int()            
-        SeriesPtr = self._newOutValueSeries(smoapi, SeriesStartInd,\
-                                            SeriesLen, byref(sLength), byref(ErrNo1))
-        #Check Error
-        ErrNo2 = self._getNodeSeries(smoapi, NodeInd, NodeAttr, \
-                                  SeriesStartInd, sLength.value, SeriesPtr)
-        BldArray = [SeriesPtr[i] for i in range(sLength.value)]
-        self._free(SeriesPtr)
-        
-        return BldArray
-
-    def get_LinkSeries(self, LinkInd, LinkAttr, SeriesStartInd = 0, SeriesLen = -1, OutInd = 0):
-        '''
-        Purpose: Get time series results for particular attribute. Specify series
-        start and length using seriesStart and seriesLength respectively.
-
-        SeriesLen = -1 Default input: Gets data from Series Start Ind to end
-        
-        '''
-        smoapi = self.smoapiBinInd[OutInd]
-        if SeriesLen > self.get_Times(numPeriods, OutInd) :
-            raise Exception("Outside Number of TimeSteps")
-        elif SeriesLen == -1:
-            SeriesLen = self.get_Times(numPeriods, OutInd) + 1 - SeriesLen
-        if LinkInd > self.get_ProjectSize(linkCount, OutInd) -1:
-            raise Exception("Outside Number of Nodes")
-        
-        sLength = c_int()
-        ErrNo1 = c_int()            
-        SeriesPtr = self._newOutValueSeries(smoapi, SeriesStartInd,\
-                                            SeriesLen, byref(sLength), byref(ErrNo1))
-        #Check Error
-        ErrNo2 = self._getLinkSeries(smoapi, LinkInd, LinkAttr, \
-                                  SeriesStartInd, sLength.value, SeriesPtr)
-        BldArray = [SeriesPtr[i] for i in range(sLength.value)]
-        self._free(SeriesPtr)
-        
-        return BldArray
-
-    def get_SubcatchSeries(self, SubcInd, SubcAttr, SeriesStartInd = 0, SeriesLen = -1, OutInd = 0):
-        '''
-        Purpose: Get time series results for particular attribute. Specify series
-        start and length using seriesStart and seriesLength respectively.
-
-        SeriesLen = -1 Default input: Gets data from Series Start Ind to end
-        
-        '''
-        smoapi = self.smoapiBinInd[OutInd]
-        if SeriesLen > self.get_Times(numPeriods, OutInd) :
-            raise Exception("Outside Number of TimeSteps")
-        elif SeriesLen == -1:
-            SeriesLen = self.get_Times(numPeriods, OutInd) + 1 - SeriesLen
-        if SubcInd > self.get_ProjectSize(subcatchCount, OutInd) -1:
-            raise Exception("Outside Number of Nodes")             
+        SeriesPtr = self._newOutValueSeries(self.smoapi, TimeStartInd,\
+                                            TimeEndInd, byref(sLength), byref(ErrNo1))
+        if ErrNo1.value != 0:
+            raise Exception("API ErrNo {0}:{1}".format(ErrNo1.value,DLLErrorKeys[ErrNo1.value]) )
             
-        sLength = c_int()
-        ErrNo1 = c_int()            
-        SeriesPtr = self._newOutValueSeries(smoapi, SeriesStartInd,\
-                                            SeriesLen, byref(sLength), byref(ErrNo1))
-        #Check Error
-        ErrNo2 = self._getSubcatchSeries(smoapi, SubcInd, SubcAttr, \
-                                  SeriesStartInd, sLength.value, SeriesPtr)
-        BldArray = [SeriesPtr[i] for i in range(sLength.value)]
-        self._free(SeriesPtr)
+        if SMO_elementType == SM_subcatch:
+            if not hasattr(self, 'SubcatchmentIDs'):
+                self._get_SubcatchIDs()
+            ErrNo2 = self._getSubcatchSeries(self.smoapi, self.SubcatchmentIDs[IDName], SMO_Attribute, \
+                                      TimeStartInd, sLength.value, SeriesPtr)
+        elif SMO_elementType == SM_node:
+            if not hasattr(self, 'NodeIDs'):
+                self._get_NodeIDs()            
+            ErrNo2 = self._getNodeSeries(self.smoapi, self.NodeIDs[IDName], SMO_Attribute, \
+                                      TimeStartInd, sLength.value, SeriesPtr)            
+        elif SMO_elementType == SM_link:
+            if not hasattr(self, 'LinkIDs'):
+                self._get_LinkIDs()
+            ErrNo2 = self._getLinkSeries(self.smoapi, self.LinkIDs[IDName], SMO_Attribute, \
+                                      TimeStartInd, sLength.value, SeriesPtr)
+        ## Add Pollutants Later
+        elif SMO_elementType == SM_sys:
+            ErrNo2 = self._getSystemSeries(self.smoapi, SMO_Attribute, \
+                                      TimeStartInd, sLength.value, SeriesPtr)
+        else:
+            raise Exception("SMO_elementType: {} Outside Valid Types".format(SMO_elementType))
+
+        if ErrNo2 != 0:
+            raise Exception("API ErrNo {0}:{1}".format(ErrNo2,DLLErrorKeys[ErrNo2]) )
         
+        BldArray = [SeriesPtr[i] for i in range(sLength.value)]
+        self._free(SeriesPtr)        
         return BldArray
 
-    def get_SystemSeries(self, SysAttr, SeriesStartInd = 0, SeriesLen = -1, OutInd = 0):
+    def get_Attribute(self, SMO_elementType, SMO_Attribute, TimeInd):
         '''
+
         Purpose: Get time series results for particular attribute. Specify series
         start and length using seriesStart and seriesLength respectively.
 
-        SeriesLen = -1 Default input: Gets data from Series Start Ind to end
-        
-        '''
-        smoapi = self.smoapiBinInd[OutInd]
-        if SeriesLen > self.get_Times(numPeriods, OutInd) :
-            raise Exception("Outside Number of TimeSteps")
-        elif SeriesLen == -1:
-            SeriesLen = self.get_Times(numPeriods, OutInd) + 1 - SeriesLen
+        SMO_elementType ---->
+            Element Types:
+                SM_subcatch,
+                SM_node,
+                SM_link,
+                SM_sys
 
-        sLength = c_int()
+        SMO_Attribute ---->
+            Subcatchment Attributes:
+                rainfall_subcatch, snow_depth_subcatch, evap_loss,infil_loss,
+                runoff_rate, gwoutflow_rate, gwtable_elev, soil_moisture,
+                pollutant_conc_subcatch
+
+            Node Attributes:
+                invert_depth, hydraulic_head, stored_ponded_volume, lateral_inflow,
+                total_inflow, flooding_losses, pollutant_conc_node
+
+            Link Attributes:
+                flow_rate_link, flow_depth, flow_velocity, flow_volume,
+                capacity, pollutant_conc_link
+
+            System Attributes:
+                air_temp, rainfall_system, snow_depth_system, evap_infil_loss,
+                runoff_flow, dry_weather_inflow, groundwater_inflow, RDII_inflow,
+                direct_inflow, total_lateral_inflow, flood_losses, outfall_flows,
+                volume_stored, evap_rate
+                
+        TimeInd = Time Index
+        '''
+        if TimeInd > self.get_Times(numPeriods)-1:
+            raise Exception("Outside Number of TimeSteps")
+        
+        aLength = c_int()
         ErrNo1 = c_int()            
-        SeriesPtr = self._newOutValueSeries(smoapi, SeriesStartInd,\
-                                            SeriesLen, byref(sLength), byref(ErrNo1))
-        #Check Error
-        ErrNo2 = self._getSystemSeries(smoapi, SysAttr, \
-                                  SeriesStartInd, sLength.value, SeriesPtr)
-        BldArray = [SeriesPtr[i] for i in range(sLength.value)]
-        self._free(SeriesPtr)
+        ValArrayPtr = self._newOutValueArray(self.smoapi, getAttribute,\
+                                             SMO_elementType, byref(aLength), byref(ErrNo1))
+        if ErrNo1.value != 0:
+            raise Exception("API ErrNo {0}:{1}".format(ErrNo1.value,DLLErrorKeys[ErrNo1.value]) )
+            
+        if SMO_elementType == SM_subcatch:
+            ErrNo2 = self._getSubcatchAttribute(self.smoapi, TimeInd, SMO_Attribute, ValArrayPtr)
+        elif SMO_elementType == SM_link:
+            ErrNo2 = self._getLinkAttribute(self.smoapi, TimeInd, SMO_Attribute, ValArrayPtr)
+        elif SMO_elementType == SM_node:
+            ErrNo2 = self._getNodeAttribute(self.smoapi, TimeInd, SMO_Attribute, ValArrayPtr)
+        ## Add Pollutants Later
+        else:
+            raise Exception("SMO_elementType: {} Outside Valid Types".format(SMO_elementType))
+
+        if ErrNo2 != 0:
+            raise Exception("API ErrNo {0}:{1}".format(ErrNo2,DLLErrorKeys[ErrNo2]) )
         
+        BldArray = [ValArrayPtr[i] for i in range(aLength.value)]
+        self._free(ValArrayPtr)        
         return BldArray
 
-    def get_NodeAttribute(self, NodeAttr, TimeInd, OutInd = 0):
+    def get_Result(self, SMO_elementType, TimeInd, IDName = None):
         '''
-        Purpose: For all nodes at given time, get a particular attribute
-        '''
-        smoapi = self.smoapiBinInd[OutInd]
-        if TimeInd > self.get_Times(numPeriods, OutInd)-1:
-            raise Exception("Outside Number of TimeSteps")
-        
-        alength = c_int()
-        ErrNo1 = c_int()
-        ValArrayPtr = self._newOutValueArray(smoapi, getAttribute,\
-                                             SM_node, byref(alength), byref(ErrNo1))
-        ErrNo2 = self._getNodeAttribute(smoapi, TimeInd, NodeAttr, ValArrayPtr)
-        BldArray = [ValArrayPtr[i] for i in range(alength.value)]
-        self._free(ValArrayPtr)
-        return BldArray        
 
-    def get_LinkAttribute(self, LinkAttr, TimeInd, OutInd = 0):
-        '''
-        Purpose: For all links at given time, get a particular attribute
-        '''
-        smoapi = self.smoapiBinInd[OutInd]
-        if TimeInd > self.get_Times(numPeriods, OutInd)-1:
-            raise Exception("Outside Number of TimeSteps")
-        
-        alength = c_int()
-        ErrNo1 = c_int()
-        ValArrayPtr = self._newOutValueArray(smoapi, getAttribute,\
-                                             SM_link, byref(alength), byref(ErrNo1))
-        ErrNo2 = self._getLinkAttribute(smoapi, TimeInd, LinkAttr, ValArrayPtr)
-        BldArray = [ValArrayPtr[i] for i in range(alength.value)]
-        self._free(ValArrayPtr)
-        return BldArray 
+        Purpose: For a element ID at given time, get all attributes
 
-    def get_SubcatchAttribute(self, SubcAttr, TimeInd, OutInd = 0):
-        '''
-        Purpose: For all subcatchments at given time, get a particular attribute
-        '''
-        smoapi = self.smoapiBinInd[OutInd]
-        if TimeInd > self.get_Times(numPeriods, OutInd)-1:
-            raise Exception("Outside Number of TimeSteps")
-        
-        alength = c_int()
-        ErrNo1 = c_int()
-        ValArrayPtr = self._newOutValueArray(smoapi, getAttribute,\
-                                             SM_subcatch, byref(alength), byref(ErrNo1))
-        ErrNo2 = self._getSubcatchAttribute(smoapi, TimeInd, SubcAttr, ValArrayPtr)
-        BldArray = [ValArrayPtr[i] for i in range(alength.value)]
-        self._free(ValArrayPtr)
-        return BldArray
+        SMO_elementType ---->
+            Element Types:
+                SM_subcatch,
+                SM_node,
+                SM_link,
+                SM_sys
+            
+        TimeInd = Time Index  
 
-    def get_SystemAttribute(self, SysAttr, TimeInd, OutInd = 0):
+        IDName = Input ID Name (Default is None for to reach SM_sys variables)
+
+              
         '''
-        Purpose: For all the system at given time, get a particular attribute
-        '''
-        smoapi = self.smoapiBinInd[OutInd]
-        if TimeInd > self.get_Times(numPeriods, OutInd)-1:
+        if TimeInd > self.get_Times(numPeriods)-1:
             raise Exception("Outside Number of TimeSteps")
         
         alength = c_int()
         ErrNo1 = c_int()
-        ValArrayPtr = self._newOutValueArray(smoapi, getAttribute,\
-                                             SM_sys, byref(alength), byref(ErrNo1))
-        ErrNo2 = self._getSystemAttribute(smoapi, TimeInd, SysAttr, ValArrayPtr)
+        ValArrayPtr = self._newOutValueArray(self.smoapi, getResult,\
+                                             SMO_elementType, byref(alength), byref(ErrNo1))
+
+        if SMO_elementType == SM_subcatch:
+            if not hasattr(self, 'SubcatchmentIDs'):
+                self._get_SubcatchIDs()
+            ErrNo2 = self._getSubcatchResult(self.smoapi, TimeInd, self.SubcatchmentIDs[IDName], ValArrayPtr)
+        elif SMO_elementType == SM_node:
+            if not hasattr(self, 'NodeIDs'):
+                self._get_NodeIDs()            
+            ErrNo2 = self._getNodeResult(self.smoapi, TimeInd, self.NodeIDs[IDName], ValArrayPtr)
+        elif SMO_elementType == SM_link:
+            if not hasattr(self, 'LinkIDs'):
+                self._get_LinkIDs()
+            ErrNo2 = self._getLinkResult(self.smoapi, TimeInd, self.LinkIDs[IDName], ValArrayPtr)
+        ## Add Pollutants Later
+        elif SMO_elementType == SM_sys:
+            ErrNo2 = self._getSystemResult(self.smoapi, TimeInd, ValArrayPtr)
+        else:
+            raise Exception("SMO_elementType: {} Outside Valid Types".format(SMO_elementType))
+
         BldArray = [ValArrayPtr[i] for i in range(alength.value)]
         self._free(ValArrayPtr)
         return BldArray
 
-    def get_NodeResult(self, NodeInd, TimeInd, OutInd = 0):
-        '''
-        Purpose: For a node at given time, get all attributes
-        '''
-        smoapi = self.smoapiBinInd[OutInd]
-        
-        if NodeInd > self.get_ProjectSize(nodeCount, OutInd) -1:
-            raise Exception("Outside Number of Nodes")
-        if TimeInd > self.get_Times(numPeriods, OutInd)-1:
-            raise Exception("Outside Number of TimeSteps")
-        
-        alength = c_int()
-        ErrNo1 = c_int()
-        ValArrayPtr = self._newOutValueArray(smoapi, getResult,\
-                                             SM_node, byref(alength), byref(ErrNo1))
-        ErrNo2 = self._getNodeResult(smoapi, TimeInd, NodeInd, ValArrayPtr)
-        BldArray = [ValArrayPtr[i] for i in range(alength.value)]
-        self._free(ValArrayPtr)
-        return BldArray
 
-    def get_LinkResult(self, LinkInd, TimeInd, OutInd = 0):
-        '''
-        Purpose: For a link at given time, get all attributes
-        '''
-        smoapi = self.smoapiBinInd[OutInd]
-        
-        if LinkInd > self.get_ProjectSize(linkCount, OutInd) -1:
-            raise Exception("Outside Number of Links")
-        if TimeInd > self.get_Times(numPeriods, OutInd)-1:
-            raise Exception("Outside Number of TimeSteps")
-        
-        alength = c_int()
-        ErrNo1 = c_int()
-        ValArrayPtr = self._newOutValueArray(smoapi, getResult,\
-                                             SM_link, byref(alength), byref(ErrNo1))
-        ErrNo2 = self._getLinkResult(smoapi, TimeInd, LinkInd, ValArrayPtr)
-        BldArray = [ValArrayPtr[i] for i in range(alength.value)]
-        self._free(ValArrayPtr)
-        return BldArray
+if __name__ in "__main__":
+    ## Run Tests
 
-    def get_SubcatchResult(self, SubcInd, TimeInd, OutInd = 0):
-        '''
-        Purpose: For a subcatchment at given time, get all attributes
-        '''
-        smoapi = self.smoapiBinInd[OutInd]
-        
-        if SubcInd > self.get_ProjectSize(subcatchCount, OutInd) -1:
-            raise Exception("Outside Number of Subcatchments")
-        if TimeInd > self.get_Times(numPeriods, OutInd)-1:
-            raise Exception("Outside Number of TimeSteps")
-        
-        alength = c_int()
-        ErrNo1 = c_int()
-        ValArrayPtr = self._newOutValueArray(smoapi, getResult,\
-                                             SM_subcatch, byref(alength), byref(ErrNo1))
-        ErrNo2 = self._getSubcatchResult(smoapi, TimeInd, SubcInd, ValArrayPtr)
-        BldArray = [ValArrayPtr[i] for i in range(alength.value)]
-        self._free(ValArrayPtr)
-        return BldArray
+    ## Open 
+    Test = SWMMBinReader('./data/outputAPI_winx86.dll')
+    Test.OpenBinFile("C:\\PROJECTCODE\\SWMMOutputAPI\\testing\\OutputTestModel522_SHORT.out")
 
-    def get_SystemResult(self, TimeInd, OutInd = 0):
-        '''
-        Purpose: For the system at given time, get all attributes
-        '''
-        smoapi = self.smoapiBinInd[OutInd]
+    ## Get IDs
+    print("\nProject Element ID Info")
+    print(Test.get_IDs(SM_subcatch))
+    print(Test.get_IDs(SM_node))
+    print(Test.get_IDs(SM_link))
 
-        if TimeInd > self.get_Times(numPeriods, OutInd)-1:
-            raise Exception("Outside Number of TimeSteps")
-        
-        alength = c_int()
-        ErrNo1 = c_int()
-        ValArrayPtr = self._newOutValueArray(smoapi, getResult,\
-                                             SM_sys, byref(alength), byref(ErrNo1))
-        ErrNo2 = self._getSystemResult(smoapi, TimeInd, ValArrayPtr)
-        BldArray = [ValArrayPtr[i] for i in range(alength.value)]
-        self._free(ValArrayPtr)
-        return BldArray
+    ## Get Project Size
+    print("\nProject Size Info")
+    print("Subcatchments: {}".format(Test.get_ProjectSize(subcatchCount)))
+    print("Nodes: {}".format(Test.get_ProjectSize(nodeCount)))
+    print("Links: {}".format(Test.get_ProjectSize(linkCount)))
+    print("Pollutants: {}".format(Test.get_ProjectSize(pollutantCount)))
+
+    ## Project Time Steps
+    print("\nProject Time Info")
+    print("Report Step: {}".format(Test.get_Times(reportStep)))
+    print("Periods: {}".format(Test.get_Times(numPeriods)))
+
+    ## Get Time Series
+    print("\nGet Time Series")
+    TimeSeries = Test.get_TimeSeries()
+    print(TimeSeries[:10])
+    
+    ## Get Series
+    print("\nSeries Tests")
+    SubcSeries = Test.get_Series(SM_subcatch, runoff_rate, 'S3', 0, 50)
+    print(SubcSeries)
+    NodeSeries = Test.get_Series(SM_node, invert_depth, 'J4', 0, 50)
+    print(NodeSeries)
+    LinkSeries = Test.get_Series(SM_link, rainfall_subcatch, 'C2', 0, 50)
+    print(LinkSeries)
+    SystSeries = Test.get_Series(SM_sys, rainfall_system, TimeStartInd = 0, TimeEndInd = 50)
+    print(SystSeries)
+
+    ## Get Attributes
+    print("\nAttributes Tests")
+    SubcAttributes = Test.get_Attribute(SM_subcatch, rainfall_subcatch, 0) #<- Check Values.. Might be issue here
+    print(SubcAttributes)
+    NodeAttributes = Test.get_Attribute(SM_node, invert_depth, 10)
+    print(NodeAttributes)
+    LinkAttributes = Test.get_Attribute(SM_link, flow_rate_link, 50)
+    print(LinkAttributes)
+
+    ## Get Results
+    print("\nResult Tests")
+    SubcResults = Test.get_Result(SM_subcatch,3000,'S3')
+    print(SubcResults)
+    NodeResults = Test.get_Result(SM_node,3000,'J1')
+    print(NodeResults)
+    LinkResults = Test.get_Result(SM_link,9000,'C3')
+    print(LinkResults)
+    SystResults = Test.get_Result(SM_sys,3000,'S3')
+    print(SystResults)    
+    
+    ## Close Output File
+    Test.CloseBinFile()
+
+
+    help(SWMMBinReader)
