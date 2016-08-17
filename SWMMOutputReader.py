@@ -99,7 +99,7 @@ class SWMMBinReader:
         self.smoapi = self._initsmoapi()
         ErrNo = self._openBinFile(self.smoapi,OutLoc)
         if ErrNo != 0:
-            raise Exception("API ErrNo {0}:{1}".format(ErrNo1.value, DLLErrorKeys[ErrNo.value]))
+            raise Exception("API ErrNo {0}:{1}".format(ErrNo, DLLErrorKeys[ErrNo]))
       
     
     def CloseBinFile(self):
@@ -127,8 +127,8 @@ class SWMMBinReader:
 
         self.SubcatchmentIDs = {}
         for i in range(self.get_ProjectSize(subcatchCount)):
-            NAME = create_string_buffer(32)
-            LEN = c_int(32)
+            NAME = create_string_buffer(46)
+            LEN = c_int(46)
             ErrNo1 = self._getIDs(self.smoapi, SM_subcatch, i, byref(NAME), byref(LEN))
             if ErrNo1 != 0:
                 raise Exception("API ErrNo {0}:{1}".format(ErrNo1.value, DLLErrorKeys[ErrNo1.value]) )
@@ -142,8 +142,8 @@ class SWMMBinReader:
         '''
         self.NodeIDs = {}
         for i in range(self.get_ProjectSize(nodeCount)):
-            NAME = create_string_buffer(32)
-            LEN = c_int(32)
+            NAME = create_string_buffer(46)
+            LEN = c_int(46)
             ErrNo1 = self._getIDs(self.smoapi, SM_node, i, byref(NAME), byref(LEN))
             if ErrNo1 != 0:
                 raise Exception("API ErrNo {0}:{1}".format(ErrNo1.value, DLLErrorKeys[ErrNo1.value]) )
@@ -157,8 +157,8 @@ class SWMMBinReader:
         '''
         self.LinkIDs = {}
         for i in range(self.get_ProjectSize(linkCount)):
-            NAME = create_string_buffer(32)
-            LEN = c_int(32)
+            NAME = create_string_buffer(46)
+            LEN = c_int(46)
             ErrNo1 = self._getIDs(self.smoapi, SM_link, i, byref(NAME), byref(LEN))
             if ErrNo1 != 0:
                 raise Exception("API ErrNo {0}:{1}".format(ErrNo1.value, DLLErrorKeys[ErrNo1.value]) )
@@ -172,8 +172,8 @@ class SWMMBinReader:
         '''
         self.PollutantIDs = {}
         for i in range(self.get_ProjectSize(pollutantCount)):
-            NAME = create_string_buffer(32)
-            LEN = c_int(32)
+            NAME = create_string_buffer(46)
+            LEN = c_int(46)
             ErrNo1 = self._getIDs(self.smoapi, SM_sys, i, byref(NAME), byref(LEN))
             if ErrNo1 != 0:
                 raise Exception("API ErrNo {0}:{1}".format(ErrNo1.value, DLLErrorKeys[ErrNo1.value]) )
@@ -539,7 +539,7 @@ if __name__ in "__main__":
     print("\nSeries Tests")
     SubcSeries = Test.get_Series(SM_subcatch, runoff_rate, 'S3', 0, 50)
     print(SubcSeries)
-    NodeSeries = Test.get_Series(SM_node, invert_depth, 'J4', 0, 50)
+    NodeSeries = Test.get_Series(SM_node, invert_depth, 'J1', 0, 50)
     print(NodeSeries)
     LinkSeries = Test.get_Series(SM_link, rainfall_subcatch, 'C2', 0, 50)
     print(LinkSeries)

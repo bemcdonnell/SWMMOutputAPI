@@ -28,7 +28,7 @@
 #define DLLEXPORT __declspec(dllexport) __cdecl
 
 #define MAXFILENAME     259   //
-#define MAXELENAME       31   // Max characters in element name
+#define MAXELENAME       45   // Max characters in element name
 
 #include <stdbool.h>
 
