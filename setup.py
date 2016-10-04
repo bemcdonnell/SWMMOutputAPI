@@ -25,10 +25,14 @@ setup(name='SWMMOutputAPI',
                        'license.txt']},
       include_package_data=True,
       license="BSD2 License",
-      keywords = "swmm5",
+      keywords = "swmm5, swmm, binary output, hydraulics, hydrology, modeling, collection system",
       classifiers=[
-          "License :: OSI Approved :: BSD2 License",
+          "Topic :: Scientific/Engineering",
+          "Topic :: Documentation :: Sphinx",
+          "Operating System :: Microsoft :: Windows",
+          "License :: OSI Approved :: BSD License",
           "Programming Language :: Python :: 2.7",
+          "Programming Language :: C",
           "Development Status :: 4 - Beta",
       ]
 )
