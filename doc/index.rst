@@ -23,3 +23,13 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+
+Acknowledgements
+================
+Thanks to:
+
+* Colleen Barr
+* Ian Endres
+* Fred Myers
+* Michael Tryby
+
